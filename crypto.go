@@ -139,34 +139,34 @@ func pkcs7Unpad(data []byte, blockSize int) ([]byte, error) {
 	return data[:len(data)-padding], nil
 }
 
-func parseRSAPublicKey(pemData []byte) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode(pemData)
-	if block == nil {
-		return nil, errors.New("invalid pem")
+func parseRSAPublicKey(keyData []byte) (*rsa.PublicKey, error) {
+	der, err := keyDER(keyData)
+	if err != nil {
+		return nil, err
 	}
-	if pub, err := x509.ParsePKIXPublicKey(block.Bytes); err == nil {
+	if pub, err := x509.ParsePKIXPublicKey(der); err == nil {
 		rsaPub, ok := pub.(*rsa.PublicKey)
 		if !ok {
 			return nil, errors.New("key is not rsa public key")
 		}
 		return rsaPub, nil
 	}
-	pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	pub, err := x509.ParsePKCS1PublicKey(der)
 	if err != nil {
 		return nil, err
 	}
 	return pub, nil
 }
 
-func parseRSAPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(pemData)
-	if block == nil {
-		return nil, errors.New("invalid pem")
+func parseRSAPrivateKey(keyData []byte) (*rsa.PrivateKey, error) {
+	der, err := keyDER(keyData)
+	if err != nil {
+		return nil, err
 	}
-	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
 		return key, nil
 	}
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	parsed, err := x509.ParsePKCS8PrivateKey(der)
 	if err != nil {
 		return nil, err
 	}
@@ -175,4 +175,27 @@ func parseRSAPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
 		return nil, errors.New("key is not rsa private key")
 	}
 	return key, nil
+}
+
+// keyDER accepts a key either as PEM or as the bare base64 DER body that Keepz
+// hands out during integration (no -----BEGIN----- armor, possibly wrapped).
+func keyDER(keyData []byte) ([]byte, error) {
+	if block, _ := pem.Decode(keyData); block != nil {
+		return block.Bytes, nil
+	}
+	cleaned := strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\t', '\r', '\n':
+			return -1
+		}
+		return r
+	}, string(keyData))
+	if cleaned == "" {
+		return nil, errors.New("empty rsa key")
+	}
+	der, err := base64.StdEncoding.DecodeString(cleaned)
+	if err != nil {
+		return nil, fmt.Errorf("rsa key is neither pem nor base64 der: %w", err)
+	}
+	return der, nil
 }

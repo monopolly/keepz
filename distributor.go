@@ -35,16 +35,36 @@ func (c *API) GetAccessToken(ctx context.Context) (*AccessTokenResponse, error) 
 	return &wrapper.Value, nil
 }
 
+// Transaction statuses returned by the Direct Settlements API.
+const (
+	TxStatusInitial             = "INITIAL"
+	TxStatusPending             = "PENDING"
+	TxStatusSuccess             = "SUCCESS"
+	TxStatusRejected            = "REJECTED"
+	TxStatusFailed              = "FAILED"
+	TxStatusDeleted             = "DELETED"
+	TxStatusInsufficientBalance = "INITIAL_INSUFFICIENT_BALANCE"
+)
+
 type CreateTransactionRequest struct {
-	Amount             float64      `json:"amount"`
-	Currency           Currency     `json:"currency"`
-	Description        string       `json:"description"`
-	ToIBAN             string       `json:"toIban,omitempty"`
-	BeneficiaryName    string       `json:"beneficiaryName,omitempty"`
-	UniqueID           string       `json:"uniqueId,omitempty"`
-	ReceiverID         string       `json:"receiverId,omitempty"`
-	ReceiverType       ReceiverType `json:"receiverType,omitempty"`
-	ReceiverIdentifier string       `json:"receiverIdentifier,omitempty"`
+	Amount      float64  `json:"amount"`
+	Currency    Currency `json:"currency"`
+	Description string   `json:"description"`
+	UniqueID    string   `json:"uniqueId"`
+
+	// Recipient: either ToIBAN, or ReceiverID together with ReceiverType.
+	ToIBAN       string       `json:"toIban,omitempty"`
+	ReceiverID   string       `json:"receiverId,omitempty"`
+	ReceiverType ReceiverType `json:"receiverType,omitempty"`
+
+	BeneficiaryName           string `json:"beneficiaryName,omitempty"`
+	BeneficiaryIdentityNumber string `json:"beneficiaryIdentityNumber,omitempty"`
+	BeneficiaryAddress        string `json:"beneficiaryAddress,omitempty"`
+	BirthDate                 string `json:"birthDate,omitempty"`
+
+	DebtorName           string `json:"debtorName,omitempty"`
+	DebtorIBAN           string `json:"debtorIban,omitempty"`
+	DebtorIdentityNumber string `json:"debtorIdentityNumber,omitempty"`
 }
 
 type TransactionResponse struct {

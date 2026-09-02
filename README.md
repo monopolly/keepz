@@ -21,14 +21,24 @@ IntegratorPrivateKeyPEM: []byte(os.Getenv("KEEPZ_PRIVATE_KEY_PEM"))
 
 Send `integrator_public.pem` to Keepz when they configure your integration. Keepz uses this public key to encrypt responses and callbacks for your project.
 
+Keys may be passed either as PEM or as the bare base64 DER body that Keepz
+hands out during onboarding (no `-----BEGIN-----` armor); both are accepted.
+
 Ask Keepz for these values:
 
-- `KEEPZ_IDENTIFIER` - merchant/integrator identifier used in encrypted requests
+- `KEEPZ_IDENTIFIER` - integrator identifier sent unencrypted with every
+  eCommerce request. It is a UUID and is resolved *before* decryption, so a
+  wrong value always yields `6004 Active Integrator not found`. In practice it
+  is the same UUID as `KEEPZ_INTEGRATOR_ID`.
 - `KEEPZ_INTEGRATOR_ID` - integrator id used inside order payloads
-- `KEEPZ_PUBLIC_KEY_PEM` - Keepz public key for the selected environment
+- `KEEPZ_PUBLIC_KEY_PEM` - the key requests are encrypted with. Keepz may label
+  this "Integrator Public Key" on the onboarding sheet, but it is *not* the
+  public half of your private key - Keepz holds the matching private half.
 - `KEEPZ_RECEIVER_ID` - receiver/branch/user id that will receive the payment
 - receiver type for `KEEPZ_RECEIVER_ID`, for example `BRANCH`, `USER`, or `IBAN`
-- dev and production access separately, if you need both environments
+- dev and production access separately, if you need both environments.
+  Credentials are per-environment: a production integrator id is rejected by
+  `gateway.dev.keepz.me` with `6004`.
 
 For Direct Settlements also ask Keepz for:
 
@@ -115,3 +125,31 @@ tx, err := api.CreateTransaction(context.Background(), keepz.CreateTransactionRe
 	UniqueID:        "123e4567-e89b-12d3-a456-426614174000",
 })
 ```
+
+## Coverage
+
+eCommerce (`gateway[.dev].keepz.me/ecommerce-service`), all encrypted:
+
+| Method | Endpoint | Go |
+| --- | --- | --- |
+| POST | `/api/integrator/order` | `CreateOrder` |
+| GET | `/api/integrator/order/status` | `GetOrderStatus` |
+| DELETE | `/api/integrator/order/cancel` | `CancelOrder` |
+| POST | `/api/integrator/order/refund/v2` | `RefundOrder` |
+| GET | `/api/v1/integrator/card/order-id` | `GetSavedCards` |
+| POST | `/api/v1/integrator/subscription/history` | `GetSubscriptionHistory` |
+| POST | `/api/v1/integrator/subscription/revoke` | `RevokeSubscription` |
+| - | payment callback | `ParsePaymentCallback` |
+| - | subscription callback | `ParseSubscriptionCallback` |
+
+Direct Settlements (`distributor[.dev].keepz.me`), OAuth2 bearer:
+
+| Method | Endpoint | Go |
+| --- | --- | --- |
+| POST | `/api/auth` | `GetAccessToken` (cached automatically) |
+| POST | `/api/distributor` | `CreateTransaction` |
+| GET | `/api/distributor/details` | `GetTransactionDetails` |
+| GET | `/api/distributor/balance/check` | `GetBalance` |
+
+For anything not wrapped, `EcommerceRequest` (encrypted) and
+`DistributorRequest` (bearer) take a raw path and payload.

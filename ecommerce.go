@@ -41,6 +41,10 @@ type CreateOrderRequest struct {
 	DirectLinkProvider   string                   `json:"directLinkProvider,omitempty"`
 	OpenBankingProvider  string                   `json:"openBankingLinkProvider,omitempty"`
 	CryptoProvider       string                   `json:"cryptoPaymentProvider,omitempty"`
+	InstallmentProvider  string                   `json:"installmentPaymentProvider,omitempty"`
+	PersonalNumber       string                   `json:"personalNumber,omitempty"`
+	IsForeign            *bool                    `json:"isForeign,omitempty"`
+	ValidUntil           string                   `json:"validUntil,omitempty"`
 	Language             string                   `json:"language,omitempty"`
 	CommissionType       string                   `json:"commissionType,omitempty"`
 	SaveCard             *bool                    `json:"saveCard,omitempty"`
@@ -50,13 +54,19 @@ type CreateOrderRequest struct {
 	OrderProperties      map[string]OrderProperty `json:"orderProperties,omitempty"`
 }
 
+type SubscriptionInterval string
+
+const (
+	SubscriptionIntervalWeekly  SubscriptionInterval = "WEEKLY"
+	SubscriptionIntervalMonthly SubscriptionInterval = "MONTHLY"
+)
+
 type SubscriptionPlan struct {
-	CallbackURI string   `json:"callbackUri,omitempty"`
-	Currency    Currency `json:"currency,omitempty"`
-	Amount      float64  `json:"amount,omitempty"`
-	Period      string   `json:"period,omitempty"`
-	StartDate   string   `json:"startDate,omitempty"`
-	EndDate     string   `json:"endDate,omitempty"`
+	Interval      SubscriptionInterval `json:"interval"`
+	IntervalCount int                  `json:"intervalCount"`
+	Amount        float64              `json:"amount"`
+	StartDate     string               `json:"startDate,omitempty"`
+	CallbackURL   string               `json:"callbackUrl,omitempty"`
 }
 
 type SplitDetail struct {
@@ -64,6 +74,25 @@ type SplitDetail struct {
 	ReceiverIdentifier string       `json:"receiverIdentifier"`
 	Amount             float64      `json:"amount"`
 }
+
+type OrderPropertyKey = string
+
+// Keys accepted by CreateOrderRequest.OrderProperties.
+const (
+	PropPersonalNumber           OrderPropertyKey = "PERSONAL_NUMBER"
+	PropPayerName                OrderPropertyKey = "PAYER_NAME"
+	PropPurpose                  OrderPropertyKey = "PURPOSE"
+	PropPersonalNumberOrPassport OrderPropertyKey = "PERSONAL_NUMBER_OR_PASSPORT"
+	PropIsForeign                OrderPropertyKey = "IS_FOREIGN"
+	PropServiceProviderCode      OrderPropertyKey = "SERVICE_PROVIDER_CODE"
+	PropServiceCode              OrderPropertyKey = "SERVICE_CODE"
+	PropEntityIdentifier         OrderPropertyKey = "ENTITY_IDENTIFIER"
+	PropCarIdentifier            OrderPropertyKey = "CAR_IDENTIFIER"
+	PropInvoiceNumberLabel       OrderPropertyKey = "INVOICE_NUMBER_LABEL"
+	PropDescription              OrderPropertyKey = "DESCRIPTION"
+	PropIntegratorProductName    OrderPropertyKey = "INTEGRATOR_PRODUCT_NAME"
+	PropAbonentCode              OrderPropertyKey = "ABONENT_CODE"
+)
 
 type OrderProperty struct {
 	Value      string `json:"value"`
@@ -110,10 +139,25 @@ func (c *API) CancelOrder(ctx context.Context, req OrderRequest) (*CancelOrderRe
 	return &res, err
 }
 
+type RefundInitiator string
+
+const (
+	RefundInitiatorIntegrator RefundInitiator = "INTEGRATOR"
+	RefundInitiatorOperator   RefundInitiator = "OPERATOR"
+)
+
+type RefundDetail struct {
+	ReceiverType       ReceiverType `json:"receiverType"`
+	ReceiverIdentifier string       `json:"receiverIdentifier"`
+	Amount             float64      `json:"amount"`
+}
+
 type RefundOrderRequest struct {
-	IntegratorID      string  `json:"integratorId,omitempty"`
-	IntegratorOrderID string  `json:"integratorOrderId"`
-	Amount            float64 `json:"amount,omitempty"`
+	IntegratorID      string          `json:"integratorId,omitempty"`
+	IntegratorOrderID string          `json:"integratorOrderId"`
+	Amount            float64         `json:"amount"`
+	RefundInitiator   RefundInitiator `json:"refundInitiator,omitempty"`
+	RefundDetails     []RefundDetail  `json:"refundDetails,omitempty"`
 }
 
 type RefundOrderResponse struct {
@@ -173,6 +217,28 @@ func (c *API) ParsePaymentCallback(r io.Reader) (*PaymentCallback, error) {
 		return nil, err
 	}
 	return &cb, nil
+}
+
+type SubscriptionRequest struct {
+	SubscriptionID string `json:"subscriptionId"`
+}
+
+type SubscriptionHistoryEntry struct {
+	Time           string  `json:"time"`
+	Status         string  `json:"status"`
+	RefundTime     *string `json:"refundTime,omitempty"`
+	RefundedAmount float64 `json:"refundedAmount,omitempty"`
+	FailReason     string  `json:"failReason,omitempty"`
+}
+
+func (c *API) GetSubscriptionHistory(ctx context.Context, req SubscriptionRequest) ([]SubscriptionHistoryEntry, error) {
+	var res []SubscriptionHistoryEntry
+	err := c.doEncryptedJSON(ctx, http.MethodPost, c.ecommerceBaseURL, "/api/v1/integrator/subscription/history", req, nil, &res)
+	return res, err
+}
+
+func (c *API) RevokeSubscription(ctx context.Context, req SubscriptionRequest) error {
+	return c.doEncryptedJSON(ctx, http.MethodPost, c.ecommerceBaseURL, "/api/v1/integrator/subscription/revoke", req, nil, nil)
 }
 
 type SubscriptionCallback struct {
