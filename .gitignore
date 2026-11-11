@@ -1,0 +1,18 @@
+# Local credentials - never commit
+creds_test.go
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Go
+*.test
+*.out
+coverage.*

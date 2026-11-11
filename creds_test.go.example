@@ -1,0 +1,25 @@
+//go:build live
+
+package keepz
+
+// Template for live tests. Copy to creds_test.go (gitignored) and fill in:
+//
+//	cp creds_test.go.example creds_test.go
+//	go test -tags live -run TestLive ./...
+//
+// Keys are accepted as PEM or as the bare base64 DER body Keepz sends.
+const (
+	credIntegratorID = ""
+	credIdentifier   = credIntegratorID
+
+	// Our private key: Keepz encrypts responses/callbacks for it.
+	credIntegratorPrivateKey = ``
+
+	// Keepz key used to encrypt requests ("Integrator Public Key" on the
+	// onboarding sheet; NOT the public half of credIntegratorPrivateKey).
+	credKeepzPublicKey = ``
+
+	credReceiverID     = ""
+	credReceiverType   = ReceiverTypeBranch
+	credCommissionType = "RECEIVER"
+)

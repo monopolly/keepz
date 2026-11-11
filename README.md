@@ -2,6 +2,10 @@
 
 Go client for Keepz eCommerce payments and Direct Settlements.
 
+```bash
+go get github.com/monopolly/keepz
+```
+
 ## Keys and credentials
 
 For eCommerce payments Keepz uses encrypted requests, responses, and callbacks.
@@ -9,7 +13,7 @@ For eCommerce payments Keepz uses encrypted requests, responses, and callbacks.
 You generate your own RSA key pair:
 
 ```bash
-openssl genrsa -out integrator_private.pem 2048
+openssl genrsa -out integrator_private.pem 4096
 openssl rsa -in integrator_private.pem -pubout -out integrator_public.pem
 ```
 
@@ -58,7 +62,7 @@ import (
 	"context"
 	"os"
 
-	keepz "github.com/monopolly/payments/keepz"
+	"github.com/monopolly/keepz"
 )
 
 func main() {
@@ -153,3 +157,17 @@ Direct Settlements (`distributor[.dev].keepz.me`), OAuth2 bearer:
 
 For anything not wrapped, `EcommerceRequest` (encrypted) and
 `DistributorRequest` (bearer) take a raw path and payload.
+
+## Tests
+
+```bash
+go test ./...                      # offline unit tests
+```
+
+Live tests hit the real Keepz API and are behind the `live` build tag:
+
+```bash
+cp creds_test.go.example creds_test.go   # gitignored, fill in your credentials
+go test -tags live -run 'TestCredentials|TestLiveConnect' ./...
+KEEPZ_LIVE_ORDER=1 go test -tags live -run TestLiveOrder ./...   # creates and cancels a real order
+```
